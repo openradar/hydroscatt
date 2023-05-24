@@ -291,7 +291,7 @@ def write_wavelength_file(wavelength, fname):
     return fname
 
 
-def read_multiple_hydro_part_model(path, hydro_type):
+def read_multiple_hydro_part_model(path, hydro_type, d_max=None):
     """
     read multiple files containing the particle characteristics
     and combines them in a single pandas data frame
@@ -302,6 +302,8 @@ def read_multiple_hydro_part_model(path, hydro_type):
         path to the files containing the particle model data
     hydro_type : str
         hydrometeor type
+    d_max : float or None
+        if not None the data will be cut at d_max (mm)
 
     Returns
     -------
@@ -320,7 +322,7 @@ def read_multiple_hydro_part_model(path, hydro_type):
     temp_vec2 = []
     first_file = True
     for fname in flist:
-        df_aux, temp = read_melting_hydro_part_model(fname)
+        df_aux, temp = read_melting_hydro_part_model(fname, d_max=d_max)
         temp_vec.append(temp)
         temp_vec2.extend(temp+np.zeros(df_aux.shape[0]))
         if first_file:

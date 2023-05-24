@@ -96,7 +96,7 @@ def compute_axis_ratio_mh(diam, fmw):
     for ind, diam_part in enumerate(diam):
         axis_ratio_w[ind] = dsr_thurai_2007(diam_part)
     # limit the axis ratio of big drops
-    axis_ratio_w[axis_ratio_w > 0.56] = 0.56
+    axis_ratio_w[axis_ratio_w < 0.56] = 0.56
 
     axis_ratio_h = compute_axis_ratio_dh(diam)
 

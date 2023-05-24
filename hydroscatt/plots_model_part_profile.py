@@ -81,19 +81,21 @@ def main():
 
     # list of initial hailstone diameter to plot
     d_init_vec = [4., 8., 10., 15., 25., 35.]
-    alt_list = np.array([4000, 3000, 2000, 100])  # masl
-    # alt_list = np.array([3300, 3330, 3350])  # masl
+    alt_list = np.array([4000, 3000, 2000, 100, 0])  # masl
+#    # alt_list = np.array([3300, 3330, 3350])  # masl
     ylabel = 'altitude [masl]'
     alt_label = 'masl'
+    d_max = None
 
-    # list of initial snowflake diameter to plot
-    # d_init_vec = [5., 10., 15., 20.]
-    # alt_list = np.array([0, -100, -200, -300, -400, -500]) # m from iso0
+#    # list of initial snowflake diameter to plot
+#    d_init_vec = [5., 10., 15., 20.]
+#    alt_list = np.array([0, -100, -200, -300, -400, -500]) # m from iso0
+#    d_max = 10.
 #    ylabel = 'height with respect to iso0 [m]'
 #    alt_label = 'm from iso0'
 
     df_model, temp_vec = read_multiple_hydro_part_model(
-        args.path, args.hydro_type)
+        args.path, args.hydro_type, d_max=d_max)
 
     if df_model is None:
         return
@@ -103,12 +105,12 @@ def main():
         with_subdirs=False)
 
     # Functions valid for all hydrometeors:
-    plot_profile_d_ext(
-        savedir, args.hydro_type, df_model, temp_vec, d_init_vec,
-        ylabel=ylabel)
-    plot_profile_d_int(
-        savedir, args.hydro_type, df_model, temp_vec, d_init_vec,
-        ylabel=ylabel)
+#    plot_profile_d_ext(
+#        savedir, args.hydro_type, df_model, temp_vec, d_init_vec,
+#        ylabel=ylabel)
+#    plot_profile_d_int(
+#        savedir, args.hydro_type, df_model, temp_vec, d_init_vec,
+#        ylabel=ylabel)
 #    plot_profile_fmw(
 #        savedir, args.hydro_type, df_model, temp_vec, d_init_vec,
 #        ylabel=ylabel)
@@ -122,14 +124,14 @@ def main():
     if args.hydro_type == 'melting_hail':
 #       plot_profile_mass(
 #           savedir, args.hydro_type, df_model, temp_vec, d_init_vec)
-        plot_profile_bulk_mass(savedir, args.hydro_type, df_model, temp_vec)
-        plot_vel_at_altitude(
-            savedir, args.hydro_type, df_model, temp_vec, alt_list)
-        plot_nre_at_altitude(
-            savedir, args.hydro_type, df_model, temp_vec, alt_list)
-        plot_psd_at_altitude(
-            savedir, args.hydro_type, df_model, temp_vec, alt_list,
-            with_breakup=True)
+#        plot_profile_bulk_mass(savedir, args.hydro_type, df_model, temp_vec)
+#        plot_vel_at_altitude(
+#            savedir, args.hydro_type, df_model, temp_vec, alt_list)
+#        plot_nre_at_altitude(
+#            savedir, args.hydro_type, df_model, temp_vec, alt_list)
+#        plot_psd_at_altitude(
+#            savedir, args.hydro_type, df_model, temp_vec, alt_list,
+#            with_breakup=True)
         plot_psd_drops_at_altitude(
             savedir, args.hydro_type, df_model, temp_vec, alt_list,
             d_max_h=35., lamb_h=0.27, coeff_nh=800.)
@@ -514,15 +516,13 @@ def plot_profile_bulk_mass(savedir, hydro_type, df_model, temp_vec,
         fmw_aux = df_aux['fmw'].values
         shed_water_mass_aux = df_aux['shed_water_mass'].values
         prob_break = df_aux['prob_break'].values
+        vel_hail = df_aux['vel'].values
         water_mass_aux = hail_mass_aux*fmw_aux
         ice_mass_aux = hail_mass_aux - water_mass_aux
 
         bin_left = np.append([0], d_init[:-1])
         bin_right = deepcopy(d_init)
         delta_d = bin_right - bin_left
-
-        vel_hail, _ = compute_velocity_melting_hail(
-            d_ext, hail_mass_aux, fmw_aux, alpha)
 
         if np.isclose(temp, 0.):
             vel_hail0 = deepcopy(vel_hail)
@@ -616,8 +616,13 @@ def plot_profile_bulk_snow_mass(savedir, hydro_type, df_model, temp_vec,
         d_init = df_aux['d_init'].values
         snow_mass_aux = df_aux['mass'].values
         fmw_aux = df_aux['fmw'].values
+        vel = df_aux['vel'].values
+        if np.isclose(temp, 0.):
+            vel0 = deepcopy(vel)
+        
         water_mass_aux = snow_mass_aux*fmw_aux
         ice_mass_aux = snow_mass_aux - water_mass_aux
+        
 
         d_rd = compute_equi_vol_diam(snow_mass_aux)
         psd_rain = ExponentialPSD(
@@ -630,6 +635,9 @@ def plot_profile_bulk_snow_mass(savedir, hydro_type, df_model, temp_vec,
         delta_d_snow = bin_right - bin_left
 
         psd_vals_snow = psd_vals_rain*delta_d_rain/delta_d_snow
+        
+        # conservation of the flux
+        psd_vals_snow *= (vel0/vel)
 
         water_mass[ind] = np.sum(water_mass_aux*psd_vals_snow*delta_d_snow)
         ice_mass[ind] = np.sum(ice_mass_aux*psd_vals_snow*delta_d_snow)
@@ -804,12 +812,19 @@ def plot_psd_snow_at_altitude(savedir, hydro_type, df_model, temp_vec,
         df_aux.sort_values('d_init', inplace=True)
         d_init = df_aux['d_init'].values
         d_ext = df_aux['d_ext'].values
+        vel = df_aux['vel'].values
 
         bin_left = np.append([0], d_init[:-1])
         bin_right = deepcopy(d_init)
+        
+        if np.isclose(alt, 0):
+            vel0 = deepcopy(vel)
 
         psd_snow = ExponentialPSD(N0=nw, Lambda=lamb, D_max=d_init[-1])
         psd_vals_snow_aux = psd_snow(d_init)
+        
+        # conservation of the flux
+        psd_vals_snow_aux *= (vel0/vel)
 
         bin_left_vec = np.append([0], d_init[:-1])
         bin_right_vec = deepcopy(d_init)

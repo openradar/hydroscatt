@@ -76,6 +76,11 @@ def main():
         '--rr', type=float,
         default=5.,
         help='equivalent rainfall rate. Default 5 mm/h')
+        
+    parser.add_argument(
+        '--d_max', type=float,
+        default=None,
+        help='Maximum snowflake size. If None it will be that of the input file. Default None')
 
     parser.add_argument(
         '--analytical_cant_angl', type=int,
@@ -103,7 +108,6 @@ def main():
     hydro_label = f'rreq{args.rr:.1f}_melting_snow'
     nw = 8000.
     lamb = 4.1*np.power(args.rr, -0.21)
-    d_max_s = None
 
     # parameters
     psd_var_list = [
@@ -161,7 +165,7 @@ def main():
     for ind_temp, (model_file, scatt_file) in enumerate(zip(
             flist_model, flist_scatt)):
         df_model, temp = read_melting_hydro_part_model(
-            model_file, d_max=d_max_s)
+            model_file, d_max=args.d_max)
         n_sf = df_model.shape[0]
         df_scatt = read_scatt_double_layer(scatt_file, nrows=n_sf)
 
