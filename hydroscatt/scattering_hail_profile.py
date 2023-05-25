@@ -339,8 +339,6 @@ def main():
                     wavelength, fv180, fh180, fv0, fh0, ang_moments_rain_dict,
                     delta_d_drop, psd_rain_vals, var_list=psd_var_list)
 
-                print(rain_psd_dict['kdp'], hail_psd_dict['kdp'])
-
                 hail_psd_dict = compute_scattering_mixture(
                     hail_psd_dict, rain_psd_dict, var_list=psd_var_list)
 
